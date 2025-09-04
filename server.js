@@ -14,6 +14,8 @@ const uploadRoutes = require('./routes/upload');
 const whatsappRoutes = require('./routes/whatsapp');
 const companyRoutes = require('./routes/company');
 const itemRoutes = require('./routes/item');
+const partyRoutes = require('./routes/party');
+const saleRoutes = require('./routes/sale');
 const Item = require('./models/Item');
 
 const app = express();
@@ -34,6 +36,8 @@ app.use('/upload', uploadRoutes);
 app.use('/whatsapp', whatsappRoutes);
 app.use('/company', companyRoutes);
 app.use('/api/items', itemRoutes);
+app.use('/api/parties', partyRoutes);
+app.use('/api/sales', saleRoutes);
 
 // Health check endpoint
 app.get('/', (req, res) => {
@@ -45,7 +49,9 @@ app.get('/', (req, res) => {
       upload: '/upload',
       whatsapp: '/whatsapp',
       company: '/company',
-      items: '/api/items'
+      items: '/api/items',
+      parties: '/api/parties',
+      sales: '/api/sales'
     }
   });
 });
@@ -100,6 +106,8 @@ app.listen(PORT, async () => {
   console.log(`WhatsApp service: http://localhost:${PORT}/whatsapp`);
   console.log(`Company service: http://localhost:${PORT}/company`);
   console.log(`Items service: http://localhost:${PORT}/api/items`);
+  console.log(`Parties service: http://localhost:${PORT}/api/parties`);
+  console.log(`Sales service: http://localhost:${PORT}/api/sales`);
   
   // Initialize Bardana after server starts
   await initializeBardana();
