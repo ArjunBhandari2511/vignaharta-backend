@@ -115,6 +115,78 @@ const validateInvoiceRequest = (req, res, next) => {
   next();
 };
 
+const validateItem = (req, res, next) => {
+  const { productName, category, purchasePrice, salePrice, openingStock, asOfDate, lowStockAlert } = req.body;
+
+  // Check required fields
+  if (!productName || !category || purchasePrice === undefined || salePrice === undefined || 
+      openingStock === undefined || !asOfDate || lowStockAlert === undefined) {
+    return res.status(400).json({
+      success: false,
+      error: 'Missing required fields: productName, category, purchasePrice, salePrice, openingStock, asOfDate, lowStockAlert'
+    });
+  }
+
+  // Validate product name
+  if (typeof productName !== 'string' || productName.trim().length === 0) {
+    return res.status(400).json({
+      success: false,
+      error: 'Product name must be a non-empty string'
+    });
+  }
+
+  // Validate category
+  if (!['Primary', 'Kirana'].includes(category)) {
+    return res.status(400).json({
+      success: false,
+      error: 'Category must be either "Primary" or "Kirana"'
+    });
+  }
+
+  // Validate numeric fields
+  if (typeof purchasePrice !== 'number' || purchasePrice < 0) {
+    return res.status(400).json({
+      success: false,
+      error: 'Purchase price must be a non-negative number'
+    });
+  }
+
+  if (typeof salePrice !== 'number' || salePrice < 0) {
+    return res.status(400).json({
+      success: false,
+      error: 'Sale price must be a non-negative number'
+    });
+  }
+
+  if (typeof openingStock !== 'number' || openingStock < 0) {
+    return res.status(400).json({
+      success: false,
+      error: 'Opening stock must be a non-negative number'
+    });
+  }
+
+  if (typeof lowStockAlert !== 'number' || lowStockAlert < 0) {
+    return res.status(400).json({
+      success: false,
+      error: 'Low stock alert must be a non-negative number'
+    });
+  }
+
+  // Validate date format (YYYY-MM-DD)
+  const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+  if (!dateRegex.test(asOfDate)) {
+    return res.status(400).json({
+      success: false,
+      error: 'As of date must be in YYYY-MM-DD format'
+    });
+  }
+
+  // Sanitize product name
+  req.body.productName = productName.trim();
+  
+  next();
+};
+
 module.exports = {
   validatePhoneNumber,
   validateFileType,
@@ -123,5 +195,6 @@ module.exports = {
   validateUploadRequest,
   validateWhatsAppRequest,
   validateDocumentRequest,
-  validateInvoiceRequest
+  validateInvoiceRequest,
+  validateItem
 };
