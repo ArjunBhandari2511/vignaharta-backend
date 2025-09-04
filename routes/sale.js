@@ -40,10 +40,17 @@ router.get('/', async (req, res) => {
       .populate('partyId', 'name phoneNumber balance')
       .sort({ createdAt: -1 });
     
+    // Transform _id to id for frontend compatibility
+    const transformedSales = sales.map(sale => ({
+      ...sale.toObject(),
+      id: sale._id.toString(),
+      _id: undefined // Remove _id to avoid confusion
+    }));
+    
     res.json({
       success: true,
-      data: sales,
-      count: sales.length
+      data: transformedSales,
+      count: transformedSales.length
     });
   } catch (error) {
     console.error('Error fetching sales:', error);

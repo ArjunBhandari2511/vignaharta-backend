@@ -61,7 +61,7 @@ const itemSchema = new mongoose.Schema({
 });
 
 // Index for better query performance
-itemSchema.index({ productName: 1 });
+// Note: productName already has unique: true which creates an index
 itemSchema.index({ category: 1 });
 itemSchema.index({ isUniversal: 1 });
 

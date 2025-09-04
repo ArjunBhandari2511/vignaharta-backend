@@ -16,6 +16,7 @@ const companyRoutes = require('./routes/company');
 const itemRoutes = require('./routes/item');
 const partyRoutes = require('./routes/party');
 const saleRoutes = require('./routes/sale');
+const purchaseRoutes = require('./routes/purchase');
 const Item = require('./models/Item');
 
 const app = express();
@@ -38,6 +39,7 @@ app.use('/company', companyRoutes);
 app.use('/api/items', itemRoutes);
 app.use('/api/parties', partyRoutes);
 app.use('/api/sales', saleRoutes);
+app.use('/api/purchases', purchaseRoutes);
 
 // Health check endpoint
 app.get('/', (req, res) => {
@@ -51,7 +53,8 @@ app.get('/', (req, res) => {
       company: '/company',
       items: '/api/items',
       parties: '/api/parties',
-      sales: '/api/sales'
+      sales: '/api/sales',
+      purchases: '/api/purchases'
     }
   });
 });
@@ -108,6 +111,7 @@ app.listen(PORT, async () => {
   console.log(`Items service: http://localhost:${PORT}/api/items`);
   console.log(`Parties service: http://localhost:${PORT}/api/parties`);
   console.log(`Sales service: http://localhost:${PORT}/api/sales`);
+  console.log(`Purchases service: http://localhost:${PORT}/api/purchases`);
   
   // Initialize Bardana after server starts
   await initializeBardana();

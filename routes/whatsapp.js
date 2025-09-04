@@ -3,7 +3,8 @@ const WhatsAppService = require('../utils/whatsapp');
 const { 
   validateWhatsAppRequest, 
   validateDocumentRequest, 
-  validateInvoiceRequest 
+  validateInvoiceRequest,
+  validatePurchaseBillRequest 
 } = require('../middleware/validation');
 require('dotenv').config({ path: '../config.env' });
 
@@ -104,7 +105,7 @@ router.post('/send-invoice', validateInvoiceRequest, async (req, res) => {
 });
 
 // Send purchase bill
-router.post('/send-purchase-bill', validateInvoiceRequest, async (req, res) => {
+router.post('/send-purchase-bill', validatePurchaseBillRequest, async (req, res) => {
   try {
     // Check if WhatsApp service is configured
     if (!WhatsAppService.isConfigured()) {

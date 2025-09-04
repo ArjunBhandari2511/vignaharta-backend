@@ -1,7 +1,7 @@
 const mongoose = require('mongoose');
 
-// SaleItem subdocument schema
-const saleItemSchema = new mongoose.Schema({
+// PurchaseItem subdocument schema
+const purchaseItemSchema = new mongoose.Schema({
   id: {
     type: String,
     required: [true, 'Item ID is required']
@@ -28,19 +28,19 @@ const saleItemSchema = new mongoose.Schema({
   }
 }, { _id: false }); // Disable _id for subdocuments
 
-// Main Sale schema
-const saleSchema = new mongoose.Schema({
-  invoiceNo: {
+// Main Purchase schema
+const purchaseSchema = new mongoose.Schema({
+  billNo: {
     type: String,
-    required: [true, 'Invoice number is required'],
+    required: [true, 'Bill number is required'],
     unique: true,
     trim: true
   },
-  customerName: {
+  supplierName: {
     type: String,
-    required: [true, 'Customer name is required'],
+    required: [true, 'Supplier name is required'],
     trim: true,
-    maxlength: [100, 'Customer name cannot exceed 100 characters']
+    maxlength: [100, 'Supplier name cannot exceed 100 characters']
   },
   phoneNumber: {
     type: String,
@@ -55,7 +55,7 @@ const saleSchema = new mongoose.Schema({
     }
   },
   items: {
-    type: [saleItemSchema],
+    type: [purchaseItemSchema],
     required: [true, 'Items are required'],
     validate: {
       validator: function(items) {
@@ -96,15 +96,15 @@ const saleSchema = new mongoose.Schema({
 });
 
 // Index for better query performance
-// Note: invoiceNo already has unique: true which creates an index
-saleSchema.index({ customerName: 1 });
-saleSchema.index({ phoneNumber: 1 });
-saleSchema.index({ date: 1 });
-saleSchema.index({ status: 1 });
-saleSchema.index({ partyId: 1 });
+// Note: billNo already has unique: true which creates an index
+purchaseSchema.index({ supplierName: 1 });
+purchaseSchema.index({ phoneNumber: 1 });
+purchaseSchema.index({ date: 1 });
+purchaseSchema.index({ status: 1 });
+purchaseSchema.index({ partyId: 1 });
 
 // Pre-save middleware to sanitize data and calculate totals
-saleSchema.pre('save', function(next) {
+purchaseSchema.pre('save', function(next) {
   // Sanitize phone number
   if (this.phoneNumber) {
     this.phoneNumber = this.phoneNumber.replace(/[^\d+]/g, '');
@@ -125,12 +125,12 @@ saleSchema.pre('save', function(next) {
   next();
 });
 
-// Instance method to get formatted sale details
-saleSchema.methods.getFormattedDetails = function() {
+// Instance method to get formatted purchase details
+purchaseSchema.methods.getFormattedDetails = function() {
   return {
     id: this._id,
-    invoiceNo: this.invoiceNo,
-    customerName: this.customerName,
+    billNo: this.billNo,
+    supplierName: this.supplierName,
     phoneNumber: this.phoneNumber,
     items: this.items,
     totalAmount: this.totalAmount,
@@ -143,67 +143,67 @@ saleSchema.methods.getFormattedDetails = function() {
   };
 };
 
-// Static method to generate next invoice number
-saleSchema.statics.generateNextInvoiceNumber = async function() {
+// Static method to generate next bill number
+purchaseSchema.statics.generateNextBillNumber = async function() {
   try {
-    const lastSale = await this.findOne().sort({ invoiceNo: -1 });
+    const lastPurchase = await this.findOne().sort({ billNo: -1 });
     
-    if (!lastSale) {
+    if (!lastPurchase) {
       return '1';
     }
     
-    const lastNumber = parseInt(lastSale.invoiceNo);
+    const lastNumber = parseInt(lastPurchase.billNo);
     if (isNaN(lastNumber)) {
       return '1';
     }
     
     return (lastNumber + 1).toString();
   } catch (error) {
-    console.error('Error generating invoice number:', error);
+    console.error('Error generating bill number:', error);
     return '1';
   }
 };
 
-// Static method to get sales by date range
-saleSchema.statics.getSalesByDateRange = async function(startDate, endDate) {
+// Static method to get purchases by date range
+purchaseSchema.statics.getPurchasesByDateRange = async function(startDate, endDate) {
   try {
     // Convert date strings to Date objects for comparison
     const start = new Date(startDate);
     const end = new Date(endDate);
     
-    const sales = await this.find({
+    const purchases = await this.find({
       createdAt: {
         $gte: start,
         $lte: end
       }
     }).sort({ createdAt: -1 });
     
-    return sales;
+    return purchases;
   } catch (error) {
     throw error;
   }
 };
 
-// Static method to get sales by customer
-saleSchema.statics.getSalesByCustomer = async function(customerName, phoneNumber) {
+// Static method to get purchases by supplier
+purchaseSchema.statics.getPurchasesBySupplier = async function(supplierName, phoneNumber) {
   try {
     const filter = {};
     
-    if (customerName) {
-      filter.customerName = { $regex: customerName, $options: 'i' };
+    if (supplierName) {
+      filter.supplierName = { $regex: supplierName, $options: 'i' };
     }
     
     if (phoneNumber) {
       filter.phoneNumber = phoneNumber;
     }
     
-    const sales = await this.find(filter).sort({ createdAt: -1 });
-    return sales;
+    const purchases = await this.find(filter).sort({ createdAt: -1 });
+    return purchases;
   } catch (error) {
     throw error;
   }
 };
 
-const Sale = mongoose.model('Sale', saleSchema);
+const Purchase = mongoose.model('Purchase', purchaseSchema);
 
-module.exports = Sale;
+module.exports = Purchase;
