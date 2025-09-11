@@ -64,7 +64,7 @@ router.get('/', async (req, res) => {
     }
     
     const payments = await Payment.find(filter)
-      .populate('partyId', 'name phoneNumber balance type')
+      .populate('partyId', 'name phoneNumber balance')
       .sort({ createdAt: -1 });
     
     // Transform _id to id for frontend compatibility
@@ -112,7 +112,7 @@ router.get('/summary', async (req, res) => {
 router.get('/:id', async (req, res) => {
   try {
     const payment = await Payment.findById(req.params.id)
-      .populate('partyId', 'name phoneNumber balance type');
+      .populate('partyId', 'name phoneNumber balance');
     
     if (!payment) {
       return res.status(404).json({
@@ -169,11 +169,9 @@ router.post('/', async (req, res) => {
     const paymentNo = await Payment.generateNextPaymentNumber(type);
     
     // Find or create party
-    const partyType = type === 'payment-in' ? 'customer' : 'supplier';
     const party = await Party.findOrCreate({
       name: partyName,
-      phoneNumber: phoneNumber,
-      type: partyType
+      phoneNumber: phoneNumber
     });
     
     // Create payment
@@ -466,7 +464,7 @@ router.get('/type/:type', async (req, res) => {
     }
     
     const payments = await Payment.find(filter)
-      .populate('partyId', 'name phoneNumber balance type')
+      .populate('partyId', 'name phoneNumber balance')
       .sort({ createdAt: -1 });
     
     // Transform _id to id for frontend compatibility

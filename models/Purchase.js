@@ -36,11 +36,11 @@ const purchaseSchema = new mongoose.Schema({
     unique: true,
     trim: true
   },
-  supplierName: {
+  partyName: {
     type: String,
-    required: [true, 'Supplier name is required'],
+    required: [true, 'Party name is required'],
     trim: true,
-    maxlength: [100, 'Supplier name cannot exceed 100 characters']
+    maxlength: [100, 'Party name cannot exceed 100 characters']
   },
   phoneNumber: {
     type: String,
@@ -97,7 +97,7 @@ const purchaseSchema = new mongoose.Schema({
 
 // Index for better query performance
 // Note: billNo already has unique: true which creates an index
-purchaseSchema.index({ supplierName: 1 });
+purchaseSchema.index({ partyName: 1 });
 purchaseSchema.index({ phoneNumber: 1 });
 purchaseSchema.index({ date: 1 });
 purchaseSchema.index({ status: 1 });
@@ -130,7 +130,7 @@ purchaseSchema.methods.getFormattedDetails = function() {
   return {
     id: this._id,
     billNo: this.billNo,
-    supplierName: this.supplierName,
+    partyName: this.partyName,
     phoneNumber: this.phoneNumber,
     items: this.items,
     totalAmount: this.totalAmount,
@@ -184,13 +184,13 @@ purchaseSchema.statics.getPurchasesByDateRange = async function(startDate, endDa
   }
 };
 
-// Static method to get purchases by supplier
-purchaseSchema.statics.getPurchasesBySupplier = async function(supplierName, phoneNumber) {
+// Static method to get purchases by party
+purchaseSchema.statics.getPurchasesByParty = async function(partyName, phoneNumber) {
   try {
     const filter = {};
     
-    if (supplierName) {
-      filter.supplierName = { $regex: supplierName, $options: 'i' };
+    if (partyName) {
+      filter.partyName = { $regex: partyName, $options: 'i' };
     }
     
     if (phoneNumber) {

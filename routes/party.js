@@ -5,14 +5,10 @@ const Party = require('../models/Party');
 // GET /api/parties - Get all parties with optional filtering
 router.get('/', async (req, res) => {
   try {
-    const { type, search } = req.query;
+    const { search } = req.query;
     
     // Build filter object
     const filter = {};
-    
-    if (type && type !== 'all') {
-      filter.type = type;
-    }
     
     if (search) {
       filter.$or = [
@@ -65,13 +61,13 @@ router.get('/:id', async (req, res) => {
 // POST /api/parties - Create new party
 router.post('/', async (req, res) => {
   try {
-    const { name, phoneNumber, type, address, email } = req.body;
+    const { name, phoneNumber, address, email } = req.body;
     
     // Validate required fields
-    if (!name || !phoneNumber || !type) {
+    if (!name || !phoneNumber) {
       return res.status(400).json({
         success: false,
-        error: 'Name, phone number, and type are required'
+        error: 'Name and phone number are required'
       });
     }
     
@@ -91,7 +87,6 @@ router.post('/', async (req, res) => {
     const party = new Party({
       name,
       phoneNumber,
-      type,
       address,
       email,
       balance: 0
@@ -126,7 +121,7 @@ router.post('/', async (req, res) => {
 // PUT /api/parties/:id - Update party
 router.put('/:id', async (req, res) => {
   try {
-    const { name, phoneNumber, type, address, email, balance } = req.body;
+    const { name, phoneNumber, address, email, balance } = req.body;
     
     const party = await Party.findById(req.params.id);
     
@@ -156,7 +151,6 @@ router.put('/:id', async (req, res) => {
     // Update fields
     if (name) party.name = name;
     if (phoneNumber) party.phoneNumber = phoneNumber;
-    if (type) party.type = type;
     if (address !== undefined) party.address = address;
     if (email !== undefined) party.email = email;
     if (balance !== undefined) party.balance = balance;
@@ -233,19 +227,18 @@ router.patch('/:id/balance', async (req, res) => {
 // POST /api/parties/find-or-create - Find existing party or create new one
 router.post('/find-or-create', async (req, res) => {
   try {
-    const { name, phoneNumber, type, address, email } = req.body;
+    const { name, phoneNumber, address, email } = req.body;
     
-    if (!name || !phoneNumber || !type) {
+    if (!name || !phoneNumber) {
       return res.status(400).json({
         success: false,
-        error: 'Name, phone number, and type are required'
+        error: 'Name and phone number are required'
       });
     }
     
     const party = await Party.findOrCreate({
       name,
       phoneNumber,
-      type,
       address,
       email,
       balance: 0

@@ -7,7 +7,7 @@ const Item = require('../models/Item');
 // GET /api/purchases - Get all purchases with optional filtering
 router.get('/', async (req, res) => {
   try {
-    const { status, supplierName, phoneNumber, date, search } = req.query;
+    const { status, partyName, phoneNumber, date, search } = req.query;
     
     // Build filter object
     const filter = {};
@@ -16,8 +16,8 @@ router.get('/', async (req, res) => {
       filter.status = status;
     }
     
-    if (supplierName) {
-      filter.supplierName = { $regex: supplierName, $options: 'i' };
+    if (partyName) {
+      filter.partyName = { $regex: partyName, $options: 'i' };
     }
     
     if (phoneNumber) {
@@ -30,7 +30,7 @@ router.get('/', async (req, res) => {
     
     if (search) {
       filter.$or = [
-        { supplierName: { $regex: search, $options: 'i' } },
+        { partyName: { $regex: search, $options: 'i' } },
         { phoneNumber: { $regex: search, $options: 'i' } },
         { billNo: { $regex: search, $options: 'i' } }
       ];
@@ -91,7 +91,7 @@ router.get('/:id', async (req, res) => {
 router.post('/', async (req, res) => {
   try {
     const { 
-      supplierName, 
+      partyName, 
       phoneNumber, 
       items, 
       date, 
@@ -100,10 +100,10 @@ router.post('/', async (req, res) => {
     } = req.body;
     
     // Validate required fields
-    if (!supplierName || !phoneNumber || !items || !date) {
+    if (!partyName || !phoneNumber || !items || !date) {
       return res.status(400).json({
         success: false,
-        error: 'Supplier name, phone number, items, and date are required'
+        error: 'Party name, phone number, items, and date are required'
       });
     }
     
@@ -119,15 +119,14 @@ router.post('/', async (req, res) => {
     
     // Find or create party
     const party = await Party.findOrCreate({
-      name: supplierName,
-      phoneNumber: phoneNumber,
-      type: 'supplier'
+      name: partyName,
+      phoneNumber: phoneNumber
     });
     
     // Create purchase
     const purchase = new Purchase({
       billNo,
-      supplierName,
+      partyName,
       phoneNumber,
       items,
       totalAmount: 0, // Will be calculated in pre-save middleware
@@ -207,7 +206,7 @@ router.post('/', async (req, res) => {
 router.put('/:id', async (req, res) => {
   try {
     const { 
-      supplierName, 
+      partyName, 
       phoneNumber, 
       items, 
       date, 
@@ -229,7 +228,7 @@ router.put('/:id', async (req, res) => {
     const originalItems = [...purchase.items];
     
     // Update fields
-    if (supplierName) purchase.supplierName = supplierName;
+    if (partyName) purchase.partyName = partyName;
     if (phoneNumber) purchase.phoneNumber = phoneNumber;
     if (items) purchase.items = items;
     if (date) purchase.date = date;
@@ -442,13 +441,13 @@ router.delete('/:id', async (req, res) => {
   }
 });
 
-// GET /api/purchases/supplier/:supplierName - Get purchases by supplier name
-router.get('/supplier/:supplierName', async (req, res) => {
+// GET /api/purchases/party/:partyName - Get purchases by party name
+router.get('/party/:partyName', async (req, res) => {
   try {
-    const { supplierName } = req.params;
+    const { partyName } = req.params;
     const { phoneNumber } = req.query;
     
-    const purchases = await Purchase.getPurchasesBySupplier(supplierName, phoneNumber);
+    const purchases = await Purchase.getPurchasesByParty(partyName, phoneNumber);
     
     res.json({
       success: true,
@@ -456,10 +455,10 @@ router.get('/supplier/:supplierName', async (req, res) => {
       count: purchases.length
     });
   } catch (error) {
-    console.error('Error fetching purchases by supplier:', error);
+    console.error('Error fetching purchases by party:', error);
     res.status(500).json({
       success: false,
-      error: 'Failed to fetch purchases by supplier'
+      error: 'Failed to fetch purchases by party'
     });
   }
 });

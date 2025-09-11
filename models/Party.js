@@ -19,12 +19,6 @@ const partySchema = new mongoose.Schema({
       message: 'Invalid phone number format'
     }
   },
-  type: {
-    type: String,
-    required: [true, 'Party type is required'],
-    enum: ['customer', 'supplier'],
-    default: 'customer'
-  },
   balance: {
     type: Number,
     default: 0,
@@ -57,7 +51,6 @@ const partySchema = new mongoose.Schema({
 // Index for better query performance
 partySchema.index({ name: 1 });
 partySchema.index({ phoneNumber: 1 });
-partySchema.index({ type: 1 });
 partySchema.index({ name: 1, phoneNumber: 1 }); // Compound index for unique party identification
 
 // Pre-save middleware to sanitize data
@@ -84,7 +77,6 @@ partySchema.methods.getFormattedDetails = function() {
     id: this._id,
     name: this.name,
     phoneNumber: this.phoneNumber,
-    type: this.type,
     balance: this.balance,
     address: this.address,
     email: this.email,

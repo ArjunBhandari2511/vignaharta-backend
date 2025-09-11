@@ -36,11 +36,11 @@ const saleSchema = new mongoose.Schema({
     unique: true,
     trim: true
   },
-  customerName: {
+  partyName: {
     type: String,
-    required: [true, 'Customer name is required'],
+    required: [true, 'Party name is required'],
     trim: true,
-    maxlength: [100, 'Customer name cannot exceed 100 characters']
+    maxlength: [100, 'Party name cannot exceed 100 characters']
   },
   phoneNumber: {
     type: String,
@@ -97,7 +97,7 @@ const saleSchema = new mongoose.Schema({
 
 // Index for better query performance
 // Note: invoiceNo already has unique: true which creates an index
-saleSchema.index({ customerName: 1 });
+saleSchema.index({ partyName: 1 });
 saleSchema.index({ phoneNumber: 1 });
 saleSchema.index({ date: 1 });
 saleSchema.index({ status: 1 });
@@ -130,7 +130,7 @@ saleSchema.methods.getFormattedDetails = function() {
   return {
     id: this._id,
     invoiceNo: this.invoiceNo,
-    customerName: this.customerName,
+    partyName: this.partyName,
     phoneNumber: this.phoneNumber,
     items: this.items,
     totalAmount: this.totalAmount,
@@ -184,13 +184,13 @@ saleSchema.statics.getSalesByDateRange = async function(startDate, endDate) {
   }
 };
 
-// Static method to get sales by customer
-saleSchema.statics.getSalesByCustomer = async function(customerName, phoneNumber) {
+// Static method to get sales by party
+saleSchema.statics.getSalesByParty = async function(partyName, phoneNumber) {
   try {
     const filter = {};
     
-    if (customerName) {
-      filter.customerName = { $regex: customerName, $options: 'i' };
+    if (partyName) {
+      filter.partyName = { $regex: partyName, $options: 'i' };
     }
     
     if (phoneNumber) {

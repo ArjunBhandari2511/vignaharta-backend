@@ -7,7 +7,7 @@ const Item = require('../models/Item');
 // GET /api/sales - Get all sales with optional filtering
 router.get('/', async (req, res) => {
   try {
-    const { status, customerName, phoneNumber, date, search } = req.query;
+    const { status, partyName, phoneNumber, date, search } = req.query;
     
     // Build filter object
     const filter = {};
@@ -16,8 +16,8 @@ router.get('/', async (req, res) => {
       filter.status = status;
     }
     
-    if (customerName) {
-      filter.customerName = { $regex: customerName, $options: 'i' };
+    if (partyName) {
+      filter.partyName = { $regex: partyName, $options: 'i' };
     }
     
     if (phoneNumber) {
@@ -30,7 +30,7 @@ router.get('/', async (req, res) => {
     
     if (search) {
       filter.$or = [
-        { customerName: { $regex: search, $options: 'i' } },
+        { partyName: { $regex: search, $options: 'i' } },
         { phoneNumber: { $regex: search, $options: 'i' } },
         { invoiceNo: { $regex: search, $options: 'i' } }
       ];
@@ -91,7 +91,7 @@ router.get('/:id', async (req, res) => {
 router.post('/', async (req, res) => {
   try {
     const { 
-      customerName, 
+      partyName, 
       phoneNumber, 
       items, 
       date, 
@@ -100,10 +100,10 @@ router.post('/', async (req, res) => {
     } = req.body;
     
     // Validate required fields
-    if (!customerName || !phoneNumber || !items || !date) {
+    if (!partyName || !phoneNumber || !items || !date) {
       return res.status(400).json({
         success: false,
-        error: 'Customer name, phone number, items, and date are required'
+        error: 'Party name, phone number, items, and date are required'
       });
     }
     
@@ -119,15 +119,14 @@ router.post('/', async (req, res) => {
     
     // Find or create party
     const party = await Party.findOrCreate({
-      name: customerName,
-      phoneNumber: phoneNumber,
-      type: 'customer'
+      name: partyName,
+      phoneNumber: phoneNumber
     });
     
     // Create sale
     const sale = new Sale({
       invoiceNo,
-      customerName,
+      partyName,
       phoneNumber,
       items,
       totalAmount: 0, // Will be calculated in pre-save middleware
@@ -216,7 +215,7 @@ router.post('/', async (req, res) => {
 router.put('/:id', async (req, res) => {
   try {
     const { 
-      customerName, 
+      partyName, 
       phoneNumber, 
       items, 
       date, 
@@ -238,7 +237,7 @@ router.put('/:id', async (req, res) => {
     const originalItems = [...sale.items];
     
     // Update fields
-    if (customerName) sale.customerName = customerName;
+    if (partyName) sale.partyName = partyName;
     if (phoneNumber) sale.phoneNumber = phoneNumber;
     if (items) sale.items = items;
     if (date) sale.date = date;
@@ -415,13 +414,13 @@ router.delete('/:id', async (req, res) => {
   }
 });
 
-// GET /api/sales/customer/:customerName - Get sales by customer name
-router.get('/customer/:customerName', async (req, res) => {
+// GET /api/sales/party/:partyName - Get sales by party name
+router.get('/party/:partyName', async (req, res) => {
   try {
-    const { customerName } = req.params;
+    const { partyName } = req.params;
     const { phoneNumber } = req.query;
     
-    const sales = await Sale.getSalesByCustomer(customerName, phoneNumber);
+    const sales = await Sale.getSalesByParty(partyName, phoneNumber);
     
     res.json({
       success: true,
@@ -429,10 +428,10 @@ router.get('/customer/:customerName', async (req, res) => {
       count: sales.length
     });
   } catch (error) {
-    console.error('Error fetching sales by customer:', error);
+    console.error('Error fetching sales by party:', error);
     res.status(500).json({
       success: false,
-      error: 'Failed to fetch sales by customer'
+      error: 'Failed to fetch sales by party'
     });
   }
 });
