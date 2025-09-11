@@ -1,13 +1,11 @@
 const mongoose = require('mongoose');
-require('dotenv').config({ path: './config.env' });
+require('dotenv').config();
 
 const connectDB = async () => {
   try {
     const mongoURI = process.env.MONGODB_URI || 'mongodb://localhost:27017/vignaharta-app';
     
     const conn = await mongoose.connect(mongoURI);
-
-    console.log(`✅ MongoDB Connected: ${conn.connection.host}`);
     
     // Handle connection events
     mongoose.connection.on('error', (err) => {
@@ -15,12 +13,13 @@ const connectDB = async () => {
     });
 
     mongoose.connection.on('disconnected', () => {
-      console.log('⚠️ MongoDB disconnected');
+      // MongoDB disconnected
     });
 
+    return conn;
   } catch (error) {
     console.error('❌ MongoDB connection failed:', error.message);
-    process.exit(1);
+    throw error; // Re-throw the error so it can be caught by the caller
   }
 };
 

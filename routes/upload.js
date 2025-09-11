@@ -4,7 +4,7 @@ const path = require('path');
 const fs = require('fs');
 const CloudinaryService = require('../utils/cloudinary');
 const { validateUploadRequest } = require('../middleware/validation');
-require('dotenv').config({ path: '../config.env' });
+require('dotenv').config();
 
 const router = express.Router();
 

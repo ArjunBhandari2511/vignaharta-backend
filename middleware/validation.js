@@ -42,107 +42,6 @@ const validateUploadRequest = (req, res, next) => {
   next();
 };
 
-const validateWhatsAppRequest = (req, res, next) => {
-  const { to, text } = req.body;
-
-  if (!to || !text) {
-    return res.status(400).json({
-      success: false,
-      error: 'Phone number and text message are required'
-    });
-  }
-
-  if (!validatePhoneNumber(to)) {
-    return res.status(400).json({
-      success: false,
-      error: 'Invalid phone number format'
-    });
-  }
-
-  // Sanitize phone number
-  req.body.to = sanitizePhoneNumber(to);
-  next();
-};
-
-const validateDocumentRequest = (req, res, next) => {
-  const { to, text, documentUrl } = req.body;
-
-  if (!to || !text || !documentUrl) {
-    return res.status(400).json({
-      success: false,
-      error: 'Phone number, text message, and document URL are required'
-    });
-  }
-
-  if (!validatePhoneNumber(to)) {
-    return res.status(400).json({
-      success: false,
-      error: 'Invalid phone number format'
-    });
-  }
-
-  // Sanitize phone number
-  req.body.to = sanitizePhoneNumber(to);
-  next();
-};
-
-const validateInvoiceRequest = (req, res, next) => {
-  const { to, customerName, invoiceNo, totalAmount, date } = req.body;
-
-  if (!to || !customerName || !invoiceNo || !totalAmount || !date) {
-    return res.status(400).json({
-      success: false,
-      error: 'Missing required fields: to, customerName, invoiceNo, totalAmount, date'
-    });
-  }
-
-  if (!validatePhoneNumber(to)) {
-    return res.status(400).json({
-      success: false,
-      error: 'Invalid phone number format'
-    });
-  }
-
-  if (typeof totalAmount !== 'number' || totalAmount <= 0) {
-    return res.status(400).json({
-      success: false,
-      error: 'Total amount must be a positive number'
-    });
-  }
-
-  // Sanitize phone number
-  req.body.to = sanitizePhoneNumber(to);
-  next();
-};
-
-const validatePurchaseBillRequest = (req, res, next) => {
-  const { to, supplierName, billNo, totalAmount, date } = req.body;
-
-  if (!to || !supplierName || !billNo || !totalAmount || !date) {
-    return res.status(400).json({
-      success: false,
-      error: 'Missing required fields: to, supplierName, billNo, totalAmount, date'
-    });
-  }
-
-  if (!validatePhoneNumber(to)) {
-    return res.status(400).json({
-      success: false,
-      error: 'Invalid phone number format'
-    });
-  }
-
-  if (typeof totalAmount !== 'number' || totalAmount <= 0) {
-    return res.status(400).json({
-      success: false,
-      error: 'Total amount must be a positive number'
-    });
-  }
-
-  // Sanitize phone number
-  req.body.to = sanitizePhoneNumber(to);
-  next();
-};
 
 const validateItem = (req, res, next) => {
   const { productName, category, purchasePrice, salePrice, openingStock, asOfDate, lowStockAlert } = req.body;
@@ -222,9 +121,5 @@ module.exports = {
   validateFileSize,
   sanitizePhoneNumber,
   validateUploadRequest,
-  validateWhatsAppRequest,
-  validateDocumentRequest,
-  validateInvoiceRequest,
-  validatePurchaseBillRequest,
   validateItem
 };
