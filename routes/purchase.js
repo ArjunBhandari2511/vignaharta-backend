@@ -7,14 +7,10 @@ const Item = require('../models/Item');
 // GET /api/purchases - Get all purchases with optional filtering
 router.get('/', async (req, res) => {
   try {
-    const { status, partyName, phoneNumber, date, search } = req.query;
+    const { partyName, phoneNumber, date, search } = req.query;
     
     // Build filter object
     const filter = {};
-    
-    if (status && status !== 'all') {
-      filter.status = status;
-    }
     
     if (partyName) {
       filter.partyName = { $regex: partyName, $options: 'i' };
@@ -95,7 +91,6 @@ router.post('/', async (req, res) => {
       phoneNumber, 
       items, 
       date, 
-      status = 'pending',
       pdfUri 
     } = req.body;
     
@@ -131,7 +126,6 @@ router.post('/', async (req, res) => {
       items,
       totalAmount: 0, // Will be calculated in pre-save middleware
       date,
-      status,
       pdfUri,
       partyId: party._id
     });
@@ -210,7 +204,6 @@ router.put('/:id', async (req, res) => {
       phoneNumber, 
       items, 
       date, 
-      status, 
       pdfUri 
     } = req.body;
     
@@ -232,7 +225,6 @@ router.put('/:id', async (req, res) => {
     if (phoneNumber) purchase.phoneNumber = phoneNumber;
     if (items) purchase.items = items;
     if (date) purchase.date = date;
-    if (status) purchase.status = status;
     if (pdfUri !== undefined) purchase.pdfUri = pdfUri;
     
     await purchase.save();
@@ -325,44 +317,6 @@ router.put('/:id', async (req, res) => {
     res.status(500).json({
       success: false,
       error: 'Failed to update purchase'
-    });
-  }
-});
-
-// PATCH /api/purchases/:id/status - Update purchase status
-router.patch('/:id/status', async (req, res) => {
-  try {
-    const { status } = req.body;
-    
-    if (!status || !['pending', 'completed', 'cancelled'].includes(status)) {
-      return res.status(400).json({
-        success: false,
-        error: 'Valid status is required (pending, completed, cancelled)'
-      });
-    }
-    
-    const purchase = await Purchase.findById(req.params.id);
-    
-    if (!purchase) {
-      return res.status(404).json({
-        success: false,
-        error: 'Purchase not found'
-      });
-    }
-    
-    purchase.status = status;
-    await purchase.save();
-    
-    res.json({
-      success: true,
-      data: purchase.getFormattedDetails(),
-      message: 'Purchase status updated successfully'
-    });
-  } catch (error) {
-    console.error('Error updating purchase status:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Failed to update purchase status'
     });
   }
 });

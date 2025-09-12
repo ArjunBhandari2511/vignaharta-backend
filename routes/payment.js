@@ -8,7 +8,6 @@ router.get('/', async (req, res) => {
   try {
     const { 
       type, 
-      status, 
       partyName, 
       phoneNumber, 
       date, 
@@ -20,14 +19,6 @@ router.get('/', async (req, res) => {
     
     // Build filter object
     const filter = {};
-    
-    if (type && type !== 'all') {
-      filter.type = type;
-    }
-    
-    if (status && status !== 'all') {
-      filter.status = status;
-    }
     
     if (partyName) {
       filter.partyName = { $regex: partyName, $options: 'i' };
@@ -144,7 +135,6 @@ router.post('/', async (req, res) => {
       amount,
       totalAmount,
       date, 
-      status = 'completed',
       description,
       paymentMethod = 'cash',
       reference
@@ -183,7 +173,6 @@ router.post('/', async (req, res) => {
       amount,
       totalAmount: totalAmount || amount,
       date,
-      status,
       description,
       paymentMethod,
       reference,
@@ -228,7 +217,6 @@ router.put('/:id', async (req, res) => {
       amount,
       totalAmount,
       date, 
-      status, 
       description,
       paymentMethod,
       reference
@@ -253,7 +241,6 @@ router.put('/:id', async (req, res) => {
     if (amount !== undefined) payment.amount = amount;
     if (totalAmount !== undefined) payment.totalAmount = totalAmount;
     if (date) payment.date = date;
-    if (status) payment.status = status;
     if (description !== undefined) payment.description = description;
     if (paymentMethod) payment.paymentMethod = paymentMethod;
     if (reference !== undefined) payment.reference = reference;
@@ -294,51 +281,6 @@ router.put('/:id', async (req, res) => {
   }
 });
 
-// PATCH /api/payments/:id/status - Update payment status
-router.patch('/:id/status', async (req, res) => {
-  try {
-    const { status } = req.body;
-    
-    if (!status || !['pending', 'completed', 'cancelled'].includes(status)) {
-      return res.status(400).json({
-        success: false,
-        error: 'Valid status is required (pending, completed, cancelled)'
-      });
-    }
-    
-    const payment = await Payment.findById(req.params.id);
-    
-    if (!payment) {
-      return res.status(404).json({
-        success: false,
-        error: 'Payment not found'
-      });
-    }
-    
-    const originalStatus = payment.status;
-    payment.status = status;
-    await payment.save();
-    
-    // If status changed from completed to cancelled or vice versa, update party balance
-    if ((originalStatus === 'completed' && status === 'cancelled') ||
-        (originalStatus === 'cancelled' && status === 'completed')) {
-      await Payment.updatePartyBalance(payment);
-    }
-    
-    res.json({
-      success: true,
-      data: payment.getFormattedDetails(),
-      message: 'Payment status updated successfully'
-    });
-  } catch (error) {
-    console.error('Error updating payment status:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Failed to update payment status'
-    });
-  }
-});
-
 // DELETE /api/payments/:id - Delete payment
 router.delete('/:id', async (req, res) => {
   try {
@@ -352,7 +294,7 @@ router.delete('/:id', async (req, res) => {
     }
     
     // Reverse the party balance update
-    if (payment.partyId && payment.status === 'completed') {
+    if (payment.partyId) {
       const reverseOperation = payment.type === 'payment-in' ? 'add' : 'add';
       await Party.updateBalance(payment.partyId, payment.amount, reverseOperation);
     }
@@ -426,7 +368,7 @@ router.get('/date-range', async (req, res) => {
 router.get('/type/:type', async (req, res) => {
   try {
     const { type } = req.params;
-    const { status, partyName, phoneNumber, date, search } = req.query;
+    const { partyName, phoneNumber, date, search } = req.query;
     
     if (!['payment-in', 'payment-out'].includes(type)) {
       return res.status(400).json({
@@ -437,10 +379,6 @@ router.get('/type/:type', async (req, res) => {
     
     // Build filter object
     const filter = { type };
-    
-    if (status && status !== 'all') {
-      filter.status = status;
-    }
     
     if (partyName) {
       filter.partyName = { $regex: partyName, $options: 'i' };

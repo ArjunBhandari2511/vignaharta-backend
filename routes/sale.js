@@ -7,14 +7,10 @@ const Item = require('../models/Item');
 // GET /api/sales - Get all sales with optional filtering
 router.get('/', async (req, res) => {
   try {
-    const { status, partyName, phoneNumber, date, search } = req.query;
+    const { partyName, phoneNumber, date, search } = req.query;
     
     // Build filter object
     const filter = {};
-    
-    if (status && status !== 'all') {
-      filter.status = status;
-    }
     
     if (partyName) {
       filter.partyName = { $regex: partyName, $options: 'i' };
@@ -95,7 +91,6 @@ router.post('/', async (req, res) => {
       phoneNumber, 
       items, 
       date, 
-      status = 'pending',
       pdfUri 
     } = req.body;
     
@@ -131,7 +126,6 @@ router.post('/', async (req, res) => {
       items,
       totalAmount: 0, // Will be calculated in pre-save middleware
       date,
-      status,
       pdfUri,
       partyId: party._id
     });
@@ -219,7 +213,6 @@ router.put('/:id', async (req, res) => {
       phoneNumber, 
       items, 
       date, 
-      status, 
       pdfUri 
     } = req.body;
     
@@ -241,7 +234,6 @@ router.put('/:id', async (req, res) => {
     if (phoneNumber) sale.phoneNumber = phoneNumber;
     if (items) sale.items = items;
     if (date) sale.date = date;
-    if (status) sale.status = status;
     if (pdfUri !== undefined) sale.pdfUri = pdfUri;
     
     await sale.save();
@@ -308,44 +300,6 @@ router.put('/:id', async (req, res) => {
     res.status(500).json({
       success: false,
       error: 'Failed to update sale'
-    });
-  }
-});
-
-// PATCH /api/sales/:id/status - Update sale status
-router.patch('/:id/status', async (req, res) => {
-  try {
-    const { status } = req.body;
-    
-    if (!status || !['pending', 'completed', 'cancelled'].includes(status)) {
-      return res.status(400).json({
-        success: false,
-        error: 'Valid status is required (pending, completed, cancelled)'
-      });
-    }
-    
-    const sale = await Sale.findById(req.params.id);
-    
-    if (!sale) {
-      return res.status(404).json({
-        success: false,
-        error: 'Sale not found'
-      });
-    }
-    
-    sale.status = status;
-    await sale.save();
-    
-    res.json({
-      success: true,
-      data: sale.getFormattedDetails(),
-      message: 'Sale status updated successfully'
-    });
-  } catch (error) {
-    console.error('Error updating sale status:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Failed to update sale status'
     });
   }
 });

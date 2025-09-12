@@ -48,12 +48,6 @@ const paymentSchema = new mongoose.Schema({
     required: [true, 'Date is required'],
     match: [/^\d{1,2}\/\d{1,2}\/\d{4}$/, 'Date must be in MM/DD/YYYY format']
   },
-  status: {
-    type: String,
-    required: [true, 'Status is required'],
-    enum: ['pending', 'completed', 'cancelled'],
-    default: 'completed'
-  },
   description: {
     type: String,
     required: false,
@@ -87,7 +81,6 @@ paymentSchema.index({ type: 1 });
 paymentSchema.index({ partyName: 1 });
 paymentSchema.index({ phoneNumber: 1 });
 paymentSchema.index({ date: 1 });
-paymentSchema.index({ status: 1 });
 paymentSchema.index({ partyId: 1 });
 paymentSchema.index({ type: 1, partyName: 1 }); // Compound index for filtering
 
@@ -120,7 +113,6 @@ paymentSchema.methods.getFormattedDetails = function() {
     amount: this.amount,
     totalAmount: this.totalAmount,
     date: this.date,
-    status: this.status,
     description: this.description,
     paymentMethod: this.paymentMethod,
     reference: this.reference,
@@ -229,16 +221,7 @@ paymentSchema.statics.getPaymentSummary = async function(type = null, startDate 
         $group: {
           _id: '$type',
           totalAmount: { $sum: '$amount' },
-          totalCount: { $sum: 1 },
-          completedCount: {
-            $sum: { $cond: [{ $eq: ['$status', 'completed'] }, 1, 0] }
-          },
-          pendingCount: {
-            $sum: { $cond: [{ $eq: ['$status', 'pending'] }, 1, 0] }
-          },
-          cancelledCount: {
-            $sum: { $cond: [{ $eq: ['$status', 'cancelled'] }, 1, 0] }
-          }
+          totalCount: { $sum: 1 }
         }
       }
     ]);

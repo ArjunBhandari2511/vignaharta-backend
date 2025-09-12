@@ -74,12 +74,6 @@ const saleSchema = new mongoose.Schema({
     required: [true, 'Date is required'],
     match: [/^\d{1,2}\/\d{1,2}\/\d{4}$/, 'Date must be in MM/DD/YYYY format']
   },
-  status: {
-    type: String,
-    required: [true, 'Status is required'],
-    enum: ['pending', 'completed', 'cancelled'],
-    default: 'pending'
-  },
   pdfUri: {
     type: String,
     required: false,
@@ -100,7 +94,6 @@ const saleSchema = new mongoose.Schema({
 saleSchema.index({ partyName: 1 });
 saleSchema.index({ phoneNumber: 1 });
 saleSchema.index({ date: 1 });
-saleSchema.index({ status: 1 });
 saleSchema.index({ partyId: 1 });
 
 // Pre-save middleware to sanitize data and calculate totals
@@ -135,7 +128,6 @@ saleSchema.methods.getFormattedDetails = function() {
     items: this.items,
     totalAmount: this.totalAmount,
     date: this.date,
-    status: this.status,
     pdfUri: this.pdfUri,
     partyId: this.partyId,
     createdAt: this.createdAt,

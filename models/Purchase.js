@@ -74,12 +74,6 @@ const purchaseSchema = new mongoose.Schema({
     required: [true, 'Date is required'],
     match: [/^\d{1,2}\/\d{1,2}\/\d{4}$/, 'Date must be in MM/DD/YYYY format']
   },
-  status: {
-    type: String,
-    required: [true, 'Status is required'],
-    enum: ['pending', 'completed', 'cancelled'],
-    default: 'pending'
-  },
   pdfUri: {
     type: String,
     required: false,
@@ -100,7 +94,6 @@ const purchaseSchema = new mongoose.Schema({
 purchaseSchema.index({ partyName: 1 });
 purchaseSchema.index({ phoneNumber: 1 });
 purchaseSchema.index({ date: 1 });
-purchaseSchema.index({ status: 1 });
 purchaseSchema.index({ partyId: 1 });
 
 // Pre-save middleware to sanitize data and calculate totals
@@ -135,7 +128,6 @@ purchaseSchema.methods.getFormattedDetails = function() {
     items: this.items,
     totalAmount: this.totalAmount,
     date: this.date,
-    status: this.status,
     pdfUri: this.pdfUri,
     partyId: this.partyId,
     createdAt: this.createdAt,
