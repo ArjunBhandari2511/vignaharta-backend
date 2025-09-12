@@ -82,6 +82,7 @@ app.get('/', (req, res) => {
       company: '/company',
       items: '/api/items',
       parties: '/api/parties',
+      parties_transactions: '/api/parties/:id/transactions',
       sales: '/api/sales',
       purchases: '/api/purchases',
       payments: '/api/payments'

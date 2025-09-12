@@ -1,6 +1,9 @@
 const express = require('express');
 const router = express.Router();
 const Party = require('../models/Party');
+const Sale = require('../models/Sale');
+const Purchase = require('../models/Purchase');
+const Payment = require('../models/Payment');
 
 // GET /api/parties - Get all parties with optional filtering
 router.get('/', async (req, res) => {
@@ -291,6 +294,92 @@ router.delete('/:id', async (req, res) => {
     res.status(500).json({
       success: false,
       error: 'Failed to delete party'
+    });
+  }
+});
+
+// GET /api/parties/:id/transactions - Get all transactions for a party
+router.get('/:id/transactions', async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    // Get party details
+    const party = await Party.findById(id);
+    if (!party) {
+      return res.status(404).json({
+        success: false,
+        error: 'Party not found'
+      });
+    }
+    
+    // Fetch all transaction types in parallel
+    const [sales, purchases, payments] = await Promise.all([
+      Sale.find({ partyId: id }).sort({ createdAt: -1 }).lean(),
+      Purchase.find({ partyId: id }).sort({ createdAt: -1 }).lean(),
+      Payment.find({ partyId: id }).sort({ createdAt: -1 }).lean()
+    ]);
+    
+    // Transform and combine results
+    const allTransactions = [
+      ...sales.map(sale => ({
+        id: sale._id.toString(),
+        type: 'sale',
+        transactionId: sale.invoiceNo,
+        partyName: sale.partyName,
+        phoneNumber: sale.phoneNumber,
+        totalAmount: sale.totalAmount,
+        date: sale.date,
+        status: sale.status,
+        pdfUri: sale.pdfUri,
+        createdAt: sale.createdAt,
+        updatedAt: sale.updatedAt,
+        items: sale.items
+      })),
+      ...purchases.map(purchase => ({
+        id: purchase._id.toString(),
+        type: 'purchase',
+        transactionId: purchase.billNo,
+        partyName: purchase.partyName,
+        phoneNumber: purchase.phoneNumber,
+        totalAmount: purchase.totalAmount,
+        date: purchase.date,
+        status: purchase.status,
+        pdfUri: purchase.pdfUri,
+        createdAt: purchase.createdAt,
+        updatedAt: purchase.updatedAt,
+        items: purchase.items
+      })),
+      ...payments.map(payment => ({
+        id: payment._id.toString(),
+        type: payment.type,
+        transactionId: payment.paymentNo,
+        partyName: payment.partyName,
+        phoneNumber: payment.phoneNumber,
+        amount: payment.amount,
+        totalAmount: payment.totalAmount,
+        date: payment.date,
+        status: payment.status,
+        description: payment.description,
+        paymentMethod: payment.paymentMethod,
+        reference: payment.reference,
+        createdAt: payment.createdAt,
+        updatedAt: payment.updatedAt
+      }))
+    ].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    
+    res.json({
+      success: true,
+      data: {
+        party: party.getFormattedDetails(),
+        transactions: allTransactions
+      },
+      count: allTransactions.length
+    });
+  } catch (error) {
+    console.error('Error fetching party transactions:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch party transactions'
     });
   }
 });
