@@ -3,22 +3,62 @@ const router = express.Router();
 const Payment = require('../models/Payment');
 const Party = require('../models/Party');
 
-// GET /api/payments - Get all payments with optional filtering
+// Validation middleware
+const validatePaymentData = (req, res, next) => {
+  const { type, partyName, phoneNumber, amount, date } = req.body;
+  
+  // Check required fields
+  if (!type || !partyName || !phoneNumber || !amount || !date) {
+    return res.status(400).json({
+      success: false,
+      error: 'Missing required fields: type, partyName, phoneNumber, amount, date'
+    });
+  }
+  
+  // Validate payment type
+  if (!['payment-in', 'payment-out'].includes(type)) {
+    return res.status(400).json({
+      success: false,
+      error: 'Payment type must be either payment-in or payment-out'
+    });
+  }
+  
+  // Validate amount
+  if (typeof amount !== 'number' || amount <= 0) {
+    return res.status(400).json({
+      success: false,
+      error: 'Amount must be a positive number'
+    });
+  }
+  
+  // Validate date format
+  if (!/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(date)) {
+    return res.status(400).json({
+      success: false,
+      error: 'Date must be in MM/DD/YYYY format'
+    });
+  }
+  
+  next();
+};
+
+// GET /api/payments - Get all payments
 router.get('/', async (req, res) => {
   try {
     const { 
       type, 
       partyName, 
       phoneNumber, 
-      date, 
-      search,
       startDate,
       endDate,
-      paymentMethod
+      search 
     } = req.query;
     
-    // Build filter object
     const filter = {};
+    
+    if (type && type !== 'all') {
+      filter.type = type;
+    }
     
     if (partyName) {
       filter.partyName = { $regex: partyName, $options: 'i' };
@@ -28,20 +68,10 @@ router.get('/', async (req, res) => {
       filter.phoneNumber = phoneNumber;
     }
     
-    if (date) {
-      filter.date = date;
-    }
-    
-    if (paymentMethod && paymentMethod !== 'all') {
-      filter.paymentMethod = paymentMethod;
-    }
-    
     if (startDate && endDate) {
-      const start = new Date(startDate);
-      const end = new Date(endDate);
       filter.createdAt = {
-        $gte: start,
-        $lte: end
+        $gte: new Date(startDate),
+        $lte: new Date(endDate)
       };
     }
     
@@ -49,8 +79,7 @@ router.get('/', async (req, res) => {
       filter.$or = [
         { partyName: { $regex: search, $options: 'i' } },
         { phoneNumber: { $regex: search, $options: 'i' } },
-        { paymentNo: { $regex: search, $options: 'i' } },
-        { description: { $regex: search, $options: 'i' } }
+        { paymentNo: { $regex: search, $options: 'i' } }
       ];
     }
     
@@ -58,11 +87,11 @@ router.get('/', async (req, res) => {
       .populate('partyId', 'name phoneNumber balance')
       .sort({ createdAt: -1 });
     
-    // Transform _id to id for frontend compatibility
+    // Transform for frontend compatibility
     const transformedPayments = payments.map(payment => ({
       ...payment.toObject(),
       id: payment._id.toString(),
-      _id: undefined // Remove _id to avoid confusion
+      _id: undefined
     }));
     
     res.json({
@@ -99,7 +128,7 @@ router.get('/summary', async (req, res) => {
   }
 });
 
-// GET /api/payments/:id - Get single payment by ID
+// GET /api/payments/:id - Get single payment
 router.get('/:id', async (req, res) => {
   try {
     const payment = await Payment.findById(req.params.id)
@@ -126,10 +155,10 @@ router.get('/:id', async (req, res) => {
 });
 
 // POST /api/payments - Create new payment
-router.post('/', async (req, res) => {
+router.post('/', validatePaymentData, async (req, res) => {
   try {
     const { 
-      type = 'payment-in',
+      type,
       partyName, 
       phoneNumber, 
       amount,
@@ -140,49 +169,41 @@ router.post('/', async (req, res) => {
       reference
     } = req.body;
     
-    // Validate required fields
-    if (!partyName || !phoneNumber || !amount || !date) {
-      return res.status(400).json({
-        success: false,
-        error: 'Party name, phone number, amount, and date are required'
-      });
-    }
-    
-    if (amount <= 0) {
-      return res.status(400).json({
-        success: false,
-        error: 'Amount must be greater than 0'
-      });
-    }
-    
-    // Generate payment number
-    const paymentNo = await Payment.generateNextPaymentNumber(type);
-    
     // Find or create party
-    const party = await Party.findOrCreate({
-      name: partyName,
-      phoneNumber: phoneNumber
-    });
+    let party;
+    try {
+      party = await Party.findOrCreate({
+        name: partyName,
+        phoneNumber: phoneNumber
+      });
+    } catch (partyError) {
+      console.error('Error with party:', partyError);
+      // Continue without party reference if party creation fails
+    }
     
-    // Create payment
-    const payment = new Payment({
-      paymentNo,
+    // Create payment using the static method
+    const payment = await Payment.createPayment({
       type,
       partyName,
       phoneNumber,
       amount,
       totalAmount: totalAmount || amount,
       date,
-      description,
+      description: description || '',
       paymentMethod,
-      reference,
-      partyId: party._id
+      reference: reference || '',
+      partyId: party ? party._id : undefined
     });
     
-    await payment.save();
-    
-    // Update party balance
-    await Payment.updatePartyBalance(payment);
+    // Update party balance if party exists
+    if (party) {
+      try {
+        await Payment.updatePartyBalance(payment);
+      } catch (balanceError) {
+        console.error('Error updating party balance:', balanceError);
+        // Don't fail the payment creation if balance update fails
+      }
+    }
     
     res.status(201).json({
       success: true,
@@ -231,7 +252,7 @@ router.put('/:id', async (req, res) => {
       });
     }
     
-    // Store original values for rollback
+    // Store original values for balance rollback
     const originalAmount = payment.amount;
     const originalPartyId = payment.partyId;
     
@@ -249,12 +270,17 @@ router.put('/:id', async (req, res) => {
     
     // Update party balance if amount changed
     if (originalAmount !== payment.amount && payment.partyId) {
-      // First, reverse the original payment
-      const reverseOperation = payment.type === 'payment-in' ? 'add' : 'add';
-      await Party.updateBalance(originalPartyId, originalAmount, reverseOperation);
-      
-      // Then apply the new payment
-      await Payment.updatePartyBalance(payment);
+      try {
+        // Reverse the original payment
+        const reverseOperation = 'add';
+        await Party.updateBalance(originalPartyId, originalAmount, reverseOperation);
+        
+        // Apply the new payment
+        await Payment.updatePartyBalance(payment);
+      } catch (balanceError) {
+        console.error('Error updating party balance:', balanceError);
+        // Don't fail the update if balance update fails
+      }
     }
     
     res.json({
@@ -295,8 +321,13 @@ router.delete('/:id', async (req, res) => {
     
     // Reverse the party balance update
     if (payment.partyId) {
-      const reverseOperation = payment.type === 'payment-in' ? 'add' : 'add';
-      await Party.updateBalance(payment.partyId, payment.amount, reverseOperation);
+      try {
+        const reverseOperation = 'add';
+        await Party.updateBalance(payment.partyId, payment.amount, reverseOperation);
+      } catch (balanceError) {
+        console.error('Error reversing party balance:', balanceError);
+        // Continue with deletion even if balance reversal fails
+      }
     }
     
     await Payment.findByIdAndDelete(req.params.id);
@@ -314,61 +345,30 @@ router.delete('/:id', async (req, res) => {
   }
 });
 
-// GET /api/payments/party/:partyName - Get payments by party name
-router.get('/party/:partyName', async (req, res) => {
+// POST /api/payments/cleanup - Clean up duplicate payments
+router.post('/cleanup', async (req, res) => {
   try {
-    const { partyName } = req.params;
-    const { phoneNumber, type } = req.query;
-    
-    const payments = await Payment.getPaymentsByParty(partyName, phoneNumber, type);
+    const result = await Payment.cleanupDuplicates();
     
     res.json({
       success: true,
-      data: payments,
-      count: payments.length
+      message: 'Payment cleanup completed',
+      data: result
     });
   } catch (error) {
-    console.error('Error fetching payments by party:', error);
+    console.error('Error during payment cleanup:', error);
     res.status(500).json({
       success: false,
-      error: 'Failed to fetch payments by party'
+      error: 'Failed to cleanup payments'
     });
   }
 });
 
-// GET /api/payments/date-range - Get payments by date range
-router.get('/date-range', async (req, res) => {
-  try {
-    const { startDate, endDate, type } = req.query;
-    
-    if (!startDate || !endDate) {
-      return res.status(400).json({
-        success: false,
-        error: 'Start date and end date are required'
-      });
-    }
-    
-    const payments = await Payment.getPaymentsByDateRange(startDate, endDate, type);
-    
-    res.json({
-      success: true,
-      data: payments,
-      count: payments.length
-    });
-  } catch (error) {
-    console.error('Error fetching payments by date range:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Failed to fetch payments by date range'
-    });
-  }
-});
-
-// GET /api/payments/type/:type - Get payments by type (payment-in or payment-out)
+// GET /api/payments/type/:type - Get payments by type
 router.get('/type/:type', async (req, res) => {
   try {
     const { type } = req.params;
-    const { partyName, phoneNumber, date, search } = req.query;
+    const { partyName, phoneNumber, startDate, endDate, search } = req.query;
     
     if (!['payment-in', 'payment-out'].includes(type)) {
       return res.status(400).json({
@@ -377,39 +377,19 @@ router.get('/type/:type', async (req, res) => {
       });
     }
     
-    // Build filter object
-    const filter = { type };
+    const options = {};
+    if (partyName) options.partyName = partyName;
+    if (phoneNumber) options.phoneNumber = phoneNumber;
+    if (startDate) options.startDate = startDate;
+    if (endDate) options.endDate = endDate;
     
-    if (partyName) {
-      filter.partyName = { $regex: partyName, $options: 'i' };
-    }
+    const payments = await Payment.getPaymentsByType(type, options);
     
-    if (phoneNumber) {
-      filter.phoneNumber = phoneNumber;
-    }
-    
-    if (date) {
-      filter.date = date;
-    }
-    
-    if (search) {
-      filter.$or = [
-        { partyName: { $regex: search, $options: 'i' } },
-        { phoneNumber: { $regex: search, $options: 'i' } },
-        { paymentNo: { $regex: search, $options: 'i' } },
-        { description: { $regex: search, $options: 'i' } }
-      ];
-    }
-    
-    const payments = await Payment.find(filter)
-      .populate('partyId', 'name phoneNumber balance')
-      .sort({ createdAt: -1 });
-    
-    // Transform _id to id for frontend compatibility
+    // Transform for frontend compatibility
     const transformedPayments = payments.map(payment => ({
       ...payment.toObject(),
       id: payment._id.toString(),
-      _id: undefined // Remove _id to avoid confusion
+      _id: undefined
     }));
     
     res.json({

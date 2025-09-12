@@ -16,6 +16,11 @@ const requiredEnvVars = [
   'CLOUDINARY_API_SECRET',
 ];
 
+const optionalEnvVars = [
+  'WASENDER_API_KEY',
+  'MAX_FILE_SIZE'
+];
+
 const missingVars = requiredEnvVars.filter(varName => !process.env[varName]);
 
 if (missingVars.length > 0) {
@@ -23,6 +28,14 @@ if (missingVars.length > 0) {
   missingVars.forEach(varName => console.error(`   - ${varName}`));
   console.error('\nPlease update your .env file');
   process.exit(1);
+}
+
+// Log optional environment variables status
+const missingOptionalVars = optionalEnvVars.filter(varName => !process.env[varName]);
+if (missingOptionalVars.length > 0) {
+  console.warn('⚠️ Optional environment variables not set:');
+  missingOptionalVars.forEach(varName => console.warn(`   - ${varName}`));
+  console.warn('These features will be disabled until configured.\n');
 }
 
 // Check if uploads directory exists, create if not
@@ -79,6 +92,9 @@ app.get('/', (req, res) => {
     timestamp: new Date().toISOString(),
     services: {
       upload: '/upload',
+      upload_status: '/upload/status',
+      whatsapp_send: '/upload/send-whatsapp',
+      whatsapp_test: '/upload/test-whatsapp',
       company: '/company',
       items: '/api/items',
       parties: '/api/parties',
@@ -130,6 +146,22 @@ async function initializeBardana() {
   }
 }
 
+// Clean up duplicate payments on server startup
+async function cleanupDuplicatePayments() {
+  try {
+    const Payment = require('./models/Payment');
+    const result = await Payment.cleanupDuplicates();
+    
+    if (result.cleanedCount > 0) {
+      console.log(`🧹 Cleaned up ${result.cleanedCount} duplicate payments`);
+    } else {
+      console.log('✅ No duplicate payments found');
+    }
+  } catch (error) {
+    console.error('❌ Error cleaning up duplicate payments:', error);
+  }
+}
+
 
 // Start server
 const startServer = async () => {
@@ -145,6 +177,11 @@ const startServer = async () => {
     console.log('🔄 Initializing Bardana...');
     await initializeBardana();
     console.log('✅ Bardana initialized');
+
+    // Clean up duplicate payments
+    console.log('🔄 Cleaning up duplicate payments...');
+    await cleanupDuplicatePayments();
+    console.log('✅ Payment cleanup completed');
 
     // Start listening
     const server = app.listen(PORT, () => {

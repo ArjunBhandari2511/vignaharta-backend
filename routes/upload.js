@@ -3,7 +3,8 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 const CloudinaryService = require('../utils/cloudinary');
-const { validateUploadRequest } = require('../middleware/validation');
+const WASenderService = require('../utils/wasender');
+const { validateUploadRequest, validateWhatsAppRequest } = require('../middleware/validation');
 require('dotenv').config();
 
 const router = express.Router();
@@ -99,11 +100,118 @@ router.get('/status', (req, res) => {
     success: true,
     message: 'Upload service is running',
     cloudinary: CloudinaryService.getConfigInfo(),
+    wasender: WASenderService.getConfigInfo(),
     uploads: {
       max_file_size: process.env.MAX_FILE_SIZE || '10MB',
       allowed_types: ['application/pdf']
     }
   });
+});
+
+// Send PDF document via WhatsApp
+router.post('/send-whatsapp', validateWhatsAppRequest, async (req, res) => {
+  try {
+    const { 
+      phoneNumber, 
+      documentUrl, 
+      fileName, 
+      message, 
+      documentType,
+      // Document-specific data
+      invoiceNo,
+      customerName,
+      amount,
+      billNo,
+      supplierName,
+      receiptNo,
+      voucherNo
+    } = req.body;
+
+
+    // Check if WASender is configured
+    if (!WASenderService.isConfigured()) {
+      return res.status(500).json({
+        success: false,
+        error: 'WASender API not configured. Please add WASENDER_API_KEY to environment variables.'
+      });
+    }
+
+    let result;
+
+    // Send based on document type
+    switch (documentType) {
+      case 'invoice':
+        result = await WASenderService.sendInvoice(phoneNumber, documentUrl, fileName, invoiceNo, customerName, amount);
+        break;
+
+      case 'purchase-bill':
+        result = await WASenderService.sendPurchaseBill(phoneNumber, documentUrl, fileName, billNo, supplierName, amount);
+        break;
+
+      case 'payment-receipt':
+        result = await WASenderService.sendPaymentReceipt(phoneNumber, documentUrl, fileName, receiptNo, customerName, amount);
+        break;
+
+      case 'payment-voucher':
+        result = await WASenderService.sendPaymentVoucher(phoneNumber, documentUrl, fileName, voucherNo, supplierName, amount);
+        break;
+
+      default:
+        // Generic document send
+        result = await WASenderService.sendDocument(phoneNumber, documentUrl, fileName, message, documentType);
+        break;
+    }
+
+    if (result.success) {
+      res.json({
+        success: true,
+        message: 'Document sent via WhatsApp successfully',
+        messageId: result.messageId,
+        status: result.status,
+        data: result.response
+      });
+    } else {
+      res.status(500).json({
+        success: false,
+        error: result.error,
+        statusCode: result.statusCode,
+        details: result.response
+      });
+    }
+
+  } catch (error) {
+    console.error('WhatsApp send error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to send document via WhatsApp'
+    });
+  }
+});
+
+// Test WASender API connection
+router.get('/test-whatsapp', async (req, res) => {
+  try {
+    const result = await WASenderService.testConnection();
+    
+    if (result.success) {
+      res.json({
+        success: true,
+        message: 'WASender API connection successful',
+        status: result.status
+      });
+    } else {
+      res.status(500).json({
+        success: false,
+        error: result.error
+      });
+    }
+  } catch (error) {
+    console.error('WhatsApp test error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to test WASender API'
+    });
+  }
 });
 
 module.exports = router;
